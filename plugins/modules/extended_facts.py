@@ -96,6 +96,7 @@ from ansible_collections.deltabg.extended_facts.plugins.module_utils.facts.exten
 from ansible_collections.deltabg.extended_facts.plugins.module_utils.facts.extended.mysql import MysqlFactCollector
 from ansible_collections.deltabg.extended_facts.plugins.module_utils.facts.extended.icinga2 import Icinga2FactCollector
 from ansible_collections.deltabg.extended_facts.plugins.module_utils.facts.extended.docker import DockerFactCollector
+from ansible_collections.deltabg.extended_facts.plugins.module_utils.facts.extended.dmidecode import DmidecodeFactCollector
 
 
 def main():
@@ -118,6 +119,7 @@ def main():
         RaidFactCollector,
         IpmiFactCollector,
         SmartctlFactCollector,
+        DmidecodeFactCollector,
         MysqlFactCollector,
         Icinga2FactCollector,
         DockerFactCollector
