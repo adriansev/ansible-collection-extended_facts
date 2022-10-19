@@ -7,8 +7,8 @@ from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 import json
-import copy
 from itertools import groupby
+from itertools import chain
 
 from ansible.module_utils.facts.collector import BaseFactCollector
 from ansible.module_utils.facts.utils import get_file_content, get_file_lines
@@ -28,12 +28,19 @@ class DmidecodeFactCollector(BaseFactCollector):
             jc_present = False
 
         dmidecode_bin = module.get_bin_path('dmidecode')
-        if not dmidecode_bin or not jc_present: return facts_dict
+        if not dmidecode_bin or not jc_present:
+            print('No dmidecode or jc prsent', file = sys.stderr, flush = True)
+            return facts_dict
+
         rc, dmidecode_out, err = module.run_command([dmidecode_bin])
+        if not dmidecode_out:
+            print('No dmidecode output', file = sys.stderr, flush = True)
+            return facts_dict
 
         dmi_list = jc.parse('dmidecode', dmidecode_out) if dmidecode_out else None
-        if not dmi_list: return facts_dict
-        dmi_ini = copy.deepcopy(dmi_list)
+        if not dmi_list:
+            print('No dmi_list', file = sys.stderr, flush = True)
+            return facts_dict
 
         # http://git.savannah.nongnu.org/cgit/dmidecode.git/tree/dmidecode.c#n162
         type2str = { 0: 'BIOS', 1: 'System', 2: 'Baseboard', 3: 'Chassis', 4: 'Processor', 5: 'Memory Controller',
@@ -47,6 +54,8 @@ class DmidecodeFactCollector(BaseFactCollector):
                     36: 'Management Device Threshold Data', 37: 'Memory Channel', 38: 'IPMI Device', 39: 'Power Supply', 40: 'Additional Information',
                     41: 'Onboard Devices Extended Information', 42: 'Management Controller Host Interface', 43: 'TPM Device',
                     44: 'Processor Additional Information', 45: 'Firmware', 46: 'String Property' }
+
+        [ type2str.update({i: f'OEM-specific Type {i}'}) for i in chain(range(47,127), range(128, 255)) ]
 
         def convert_dmi_field(f_dmi_in: dict):
             if not f_dmi_in or not isinstance(f_dmi_in, dict): return None
