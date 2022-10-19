@@ -91,24 +91,21 @@ from ansible.module_utils.facts.namespace import PrefixFactNamespace
 from ansible.module_utils.facts import ansible_collector
 
 from ansible_collections.deltabg.extended_facts.plugins.module_utils.facts.extended.raid import RaidFactCollector
-from ansible_collections.deltabg.extended_facts.plugins.module_utils.facts.extended.ipmi import IpmiFactCollector
-from ansible_collections.deltabg.extended_facts.plugins.module_utils.facts.extended.smartctl import SmartctlFactCollector
 from ansible_collections.deltabg.extended_facts.plugins.module_utils.facts.extended.mysql import MysqlFactCollector
 from ansible_collections.deltabg.extended_facts.plugins.module_utils.facts.extended.icinga2 import Icinga2FactCollector
 from ansible_collections.deltabg.extended_facts.plugins.module_utils.facts.extended.docker import DockerFactCollector
+from ansible_collections.deltabg.extended_facts.plugins.module_utils.facts.extended.smartctl import SmartctlFactCollector
 from ansible_collections.deltabg.extended_facts.plugins.module_utils.facts.extended.dmidecode import DmidecodeFactCollector
-
+from ansible_collections.deltabg.extended_facts.plugins.module_utils.facts.extended.ipmi import IpmiFactCollector
 
 def main():
-    module = AnsibleModule(
-        argument_spec=dict(
-            gather_subset=dict(default=["all"], required=False, type='list'),
-            gather_timeout=dict(default=10, required=False, type='int'),
-            filter=dict(default="*", required=False),
-            fact_path=dict(default='/etc/ansible/facts.d', required=False, type='path'),
-        ),
-        supports_check_mode=True,
-    )
+    module = AnsibleModule( argument_spec = dict( gather_subset = dict(default = ["all"], required = False, type = 'list'),
+                                                  gather_timeout = dict(default = 30, required = False, type = 'int'),
+                                                  filter = dict(default = "*", required = False),
+                                                  fact_path = dict(default = '/etc/ansible/facts.d', required = False, type = 'path'),
+                                                ),
+                                                supports_check_mode = True,
+                          )
 
     gather_subset = module.params['gather_subset']
     gather_timeout = module.params['gather_timeout']
@@ -122,24 +119,21 @@ def main():
         DmidecodeFactCollector,
         MysqlFactCollector,
         Icinga2FactCollector,
-        DockerFactCollector
-    ]
+        DockerFactCollector,
+        ]
 
     # rename namespace_name to root_key?
-    namespace = PrefixFactNamespace(namespace_name='ansible',
-                                    prefix='ansible_')
+    namespace = PrefixFactNamespace(namespace_name='ansible', prefix='ansible_')
 
-    fact_collector = \
-        ansible_collector.get_ansible_collector(all_collector_classes=all_collector_classes,
-                                                namespace=namespace,
-                                                filter_spec=filter_spec,
-                                                gather_subset=gather_subset,
-                                                gather_timeout=gather_timeout,
-                                                minimal_gather_subset=minimal_gather_subset)
+    fact_collector = ansible_collector.get_ansible_collector(all_collector_classes = all_collector_classes,
+                                                             namespace = namespace,
+                                                             filter_spec = filter_spec,
+                                                             gather_subset = gather_subset,
+                                                             gather_timeout = gather_timeout,
+                                                             minimal_gather_subset = minimal_gather_subset)
 
-    facts_dict = fact_collector.collect(module=module)
-
-    module.exit_json(ansible_facts=facts_dict)
+    facts_dict = fact_collector.collect(module = module)
+    module.exit_json(ansible_facts = facts_dict)
 
 
 if __name__ == '__main__':
