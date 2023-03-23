@@ -7,6 +7,7 @@ from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 import sys
+import json
 from itertools import groupby
 from itertools import chain
 
@@ -18,28 +19,31 @@ class DmidecodeFactCollector(BaseFactCollector):
 
     def collect(self, module = None, collected_facts = None):
         facts_dict = {}
+        extd_facts_log = '/tmp/extended_facts.log'
+        with open(extd_facts_log, 'w') as f: f.write('Start of extended facts gathering log\n')
 
-        jc_present = True
         try:
             import jc
         except Exception:
-            print('jc is not installed!!! do: python3 -m pip install --upgrade jc')
-            jc_present = False
+            with open(extd_facts_log, 'a') as f: f.write('jc is not installed!!! do: python3 -m pip install --upgrade jc\n')
+            return facts_dict
 
         dmidecode_bin = module.get_bin_path('dmidecode')
-        if not dmidecode_bin or not jc_present:
-            print('No dmidecode or jc prsent', file = sys.stderr, flush = True)
+        if not dmidecode_bin:
+            with open(extd_facts_log, 'a') as f: f.write('No dmidecode command found\n')
             return facts_dict
 
         rc, dmidecode_out, err = module.run_command([dmidecode_bin])
         if not dmidecode_out:
-            print('No dmidecode output', file = sys.stderr, flush = True)
+            with open(extd_facts_log, 'a') as f: f.write(f'No dmidecode output!Exitcode:{rc}\n{err}\n')
             return facts_dict
 
         dmi_list = jc.parse('dmidecode', dmidecode_out) if dmidecode_out else None
         if not dmi_list:
-            print('No dmi_list', file = sys.stderr, flush = True)
+            with open(extd_facts_log, 'a') as f: f.write('No output from jc parsing of dmidecode_out\n')
             return facts_dict
+
+        # with open(extd_facts_log, 'a') as f: f.write(f'\n\ndmi_list:\n{dmi_list}\n\n')
 
         # http://git.savannah.nongnu.org/cgit/dmidecode.git/tree/dmidecode.c#n162
         type2str = { 0: 'BIOS', 1: 'System', 2: 'Baseboard', 3: 'Chassis', 4: 'Processor', 5: 'Memory Controller',
@@ -63,19 +67,33 @@ class DmidecodeFactCollector(BaseFactCollector):
             f_dmi_in['values'].pop('type', None)  # if there is a type (string) in values, skip it
             return { 'type': f_dmi_in['type'], **f_dmi_in['values'] }
 
-        def key_type(field): return field['type']
+        def key_type(field):
+            if not field or not isinstance(field, dict): return ''
+            if 'type' not in field: return ''
+            return field['type']
 
         dmi_out = [ convert_dmi_field(f) for f in dmi_list ]
-        [ dmi_out.remove(x) for x in dmi_out if not x ]
-        dmi_out = sorted(dmi_out, key = key_type)
+        # with open(extd_facts_log, 'a') as f: f.write(f'\n\ndmi_out1({type(dmi_out)}):\n{dmi_out}\n\n')
+
+        dmi_out_clean = list(filter(None, dmi_out))
+        dmi_out_sorted = sorted(dmi_out_clean, key = key_type)
+        # with open(extd_facts_log, 'a') as f: f.write(f'\n\ndmi_out_sorted:\n{dmi_out_sorted}\n\n')
 
         dmi_out_types = {}
-        for entry_type, entry_values in groupby(dmi_out, key = key_type):
-            dmi_out_types[type2str[entry_type]] = list(entry_values)
-            [ f.pop('type') for f in dmi_out_types[type2str[entry_type]] ]
+        with open(extd_facts_log, 'a') as f: f.write('\n\nSTART TYPES\n')
+        for entry_type, entry_values in groupby(dmi_out_sorted, key = key_type):
+            type_str = type2str[entry_type]
+            content = list(entry_values)
+            for i in content: i.pop('type')
+            if len(content) == 1:
+                dmi_out_types[type_str] = content[0]
+            else:
+                dmi_out_types[type_str] = content
 
-        if dmi_out_types:
-            facts_dict['dmidecode'] = dmi_out_types
+        # with open(extd_facts_log, 'a') as f:
+        #     f.write('\n\ndmi_out_types:\n')
+        #     f.write(f'{json.dumps(dmi_out_types, indent = 4)}\n\n')
 
+        facts_dict['dmidecode'] = dmi_out_types
         return facts_dict
 
